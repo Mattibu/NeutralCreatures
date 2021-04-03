@@ -2,10 +2,10 @@
 
 
 #include "UnitAIController.h"
-#include <Runtime\AIModule\Classes\Blueprint\AIBlueprintHelperLibrary.h>
-#include <NeutralCreatures\NeutralCreaturesCharacter.h>
-#include <Runtime\Engine\Classes\Kismet\GameplayStatics.h>
 #include "EngineUtils.h"
+#include <NeutralCreatures\NeutralCreaturesCharacter.h>
+#include <Runtime\AIModule\Classes\Blueprint\AIBlueprintHelperLibrary.h>
+#include <Runtime\Engine\Classes\Kismet\GameplayStatics.h>
 
 void AUnitAIController::BeginPlay()
 {
@@ -20,8 +20,8 @@ void AUnitAIController::Tick(float DeltaSeconds)
 
 void AUnitAIController::SetMovementDestination(FVector DestLocation)
 {
-	APawn* const my_pawn = GetPawn();
-	if (my_pawn)
+	APawn* const controlled_pawn = GetPawn();
+	if (controlled_pawn)
 	{
 		UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, DestLocation);
 	}
@@ -29,23 +29,23 @@ void AUnitAIController::SetMovementDestination(FVector DestLocation)
 
 void AUnitAIController::GenerateNextMovementDestination()
 {
-	APawn* const my_pawn = GetPawn();
-	if (!my_pawn)
+	APawn* const controlled_pawn = GetPawn();
+	if (!controlled_pawn)
 	{
 		return;
 	}
-	float distance_x = FMath::RandRange(m_MinDistanceX, m_MaxDistanceX);
-	float distance_y = FMath::RandRange(m_MinDistanceY, m_MaxDistanceY);
+	float distance_x = FMath::RandRange(m_RandMoveRangeMinX, m_RandMoveRangeMaxX);
+	float distance_y = FMath::RandRange(m_RandMoveRangeMinY, m_RandMoveRangeMaxY);
 	
-	FVector location = my_pawn->GetActorLocation();
+	FVector location = controlled_pawn->GetActorLocation();
 
 	SetMovementDestination(FVector(location.X + distance_x, location.Y + distance_y, location.Z));
 }
 
 void AUnitAIController::Move()
 {
-	APawn* const my_pawn = GetPawn();
-	if (!my_pawn)
+	APawn* const controlled_pawn = GetPawn();
+	if (!controlled_pawn)
 	{
 		return;
 	}
@@ -55,34 +55,37 @@ void AUnitAIController::Move()
 		FVector run_away_direction = FindRunAwayDirection();
 		if (run_away_direction.Size() > 0)
 		{
+			//stop scheduled normal movement
 			GetWorldTimerManager().ClearTimer(m_WaitTimer);
-			SetMovementDestination(my_pawn->GetActorLocation() + run_away_direction * m_RunAwayDistance);
+			SetMovementDestination(controlled_pawn->GetActorLocation() + run_away_direction * m_RunAwayMoveDistance);
 			return;
 		}
 	}
 
-	if (my_pawn->GetVelocity().Size() == 0.f && !GetWorldTimerManager().IsTimerActive(m_WaitTimer))
+	//when reach destination schedule next movement destination with random delay
+	if (controlled_pawn->GetVelocity().Size() == 0.f && !GetWorldTimerManager().IsTimerActive(m_WaitTimer))
 	{
-		GetWorldTimerManager().SetTimer(m_WaitTimer, this, &AUnitAIController::GenerateNextMovementDestination, 2, false);
+		GetWorldTimerManager().SetTimer(m_WaitTimer, this, &AUnitAIController::GenerateNextMovementDestination,
+										FMath::FRandRange(m_MinWaitingTimeSeconds, m_MaxWaitingTimeSeconds), false);
 	}	
 }
 
-FVector AUnitAIController::FindRunAwayDirection()
+FVector AUnitAIController::FindRunAwayDirection() const
 {
-	APawn* my_pawn = GetPawn();
+	APawn* controlled_pawn = GetPawn();
 
 	FVector run_away_direction(0.f, 0.f, 0.f);
 
-	if (!my_pawn)
+	if (!controlled_pawn)
 	{
 		return run_away_direction;
 	}
-	FVector my_pawn_location = my_pawn->GetActorLocation();
+	FVector my_pawn_location = controlled_pawn->GetActorLocation();
 
 	for (AUnitAIController* Controller : TActorRange<AUnitAIController>(GetWorld()))
 	{
 		APawn* pawn = Controller->GetPawn();
-		if (pawn  && Controller->GetUnitType() == EUnitType::PLAYER_UNIT && IsPawnTooClose(pawn, m_RunAwayDistance))
+		if (Controller->GetUnitType() == EUnitType::PLAYER_UNIT && pawn && IsPawnTooClose(pawn, m_RunAwayDetectDistance))
 		{
 			run_away_direction += my_pawn_location - pawn->GetActorLocation();
 		}
@@ -91,18 +94,18 @@ FVector AUnitAIController::FindRunAwayDirection()
 	return run_away_direction;
 }
 
-bool AUnitAIController::IsPawnTooClose(APawn* pawn, float distance)
+bool AUnitAIController::IsPawnTooClose(APawn* pawn, float distance) const
 {
-	APawn* my_pawn = GetPawn();
+	APawn* controlled_pawn = GetPawn();
 
-	if (!pawn || !my_pawn)
+	if (!pawn || !controlled_pawn)
 	{
 		return false;
 	}
-	return FVector::Dist(my_pawn->GetActorLocation(), pawn->GetActorLocation()) <= distance;
+	return FVector::Dist(controlled_pawn->GetActorLocation(), pawn->GetActorLocation()) <= distance;
 }
 
-EUnitType AUnitAIController::GetUnitType()
+EUnitType AUnitAIController::GetUnitType() const
 {
 	return m_UnitType;
 }

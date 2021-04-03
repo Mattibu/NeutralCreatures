@@ -21,37 +21,39 @@ class NEUTRALCREATURES_API AUnitAIController : public AAIController
 
 public:
 	virtual void Tick(float DeltaSeconds) override;
-	EUnitType GetUnitType();
+	EUnitType GetUnitType() const;
 
 protected:
 	virtual void BeginPlay() override;
 
 private:
-	/** Set destination of controlled pawn */
+	/** Set movement destination of controlled pawn */
 	void SetMovementDestination(FVector DestLocation);
-	/** Generate and set random movement location based on distance from properties */
+	/** Generate and set random movement location based on the distance from properties */
 	void GenerateNextMovementDestination();
 	/** Do proper movement action */
 	void Move();
 	/** Calculate direction where controlled pawn should run away */
-	FVector FindRunAwayDirection();
-	/** Checs if distance between controlled pawn and other pawn is less or equal than distance */
-	bool IsPawnTooClose(APawn* pawn, float distance);
+	FVector FindRunAwayDirection() const;
+	/** Checks if distance between controlled pawn and other pawn is less or equal than the distance */
+	bool IsPawnTooClose(APawn* pawn, float distance) const;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float m_MinDistanceX = -500;
+	float m_RandMoveRangeMinX = -500;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float m_MaxDistanceX = 500;
+	float m_RandMoveRangeMaxX = 500;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float m_MinDistanceY = -500;
+	float m_RandMoveRangeMinY = -500;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float m_MaxDistanceY = 500;
+	float m_RandMoveRangeMaxY = 500;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float m_MinWaitingTimeSeconds = 3;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float m_MaxWaitingTimeSeconds = 10;
+	float m_MaxWaitingTimeSeconds = 5;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float m_RunAwayDistance = 500;
+	float m_RunAwayDetectDistance = 500;
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float m_RunAwayMoveDistance = 350;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UnitType")
 	EUnitType m_UnitType;
